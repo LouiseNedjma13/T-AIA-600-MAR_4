@@ -1,3 +1,5 @@
+# utilisation de tokenize(text) pour le nettoyage et la tokenisation du texte, puis calcul de différentes mesures de diversité lexicale
+
 {
     "tok": int,
     "typ": int,
