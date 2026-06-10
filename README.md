@@ -3,7 +3,19 @@
 Bookworm est un prototype de moteur NLP qui analyse des livres provenant de Project Gutenberg.
 Le but est de transformer un texte brut en informations structurees pour produire une fiche de livre.
 
-Le script principal attendu par le sujet est `bookworm.py`. Il servira de point d'entree CLI pour lancer les differentes commandes du projet.
+Le point d'entree du projet est `bookworm.py`.
+
+## Installation
+
+Le projet utilise uniquement la bibliotheque standard Python.
+
+Version conseillee : Python 3.10 ou plus.
+
+```bash
+python3 --version
+```
+
+Aucune dependance externe n'est necessaire pour lancer les commandes actuelles.
 
 ## Structure
 
@@ -22,9 +34,12 @@ T-AIA-600-MAR_4/
 │   ├── cache.py
 │   └── text_processing.py
 ├── data/
+│   ├── book_collection.json
+│   ├── topic_keywords.json
 │   ├── books/
 │   └── cache/
 ├── diagrams/
+├── docs/
 ├── requirements.txt
 ├── .gitignore
 └── README.md
@@ -32,134 +47,43 @@ T-AIA-600-MAR_4/
 
 ## Role des dossiers
 
-`modules/` contient les fonctionnalites NLP demandees par le sujet : diversite lexicale, entites, topics, resume, similarite et fiche finale.
+`bookworm.py` est le script principal. Il gere les arguments CLI et appelle la bonne commande.
 
-`utils/` contient les outils communs utilisés par plusieurs modules. Ces fichiers preparent les donnees ou evitent de repeter du code.
+`modules/` contient les commandes NLP demandees par le sujet : diversite lexicale, entites, topics, resume, similarite et fiche finale.
+
+`utils/` contient les outils communs utilises par plusieurs commandes : telechargement Gutenberg, cache JSON et preprocessing du texte.
+
+`data/book_collection.json` contient la liste des livres utilises pour la similarite.
+
+`data/topic_keywords.json` contient le dictionnaire de themes utilise par `--topics`.
 
 `data/books/` contient les livres telecharges depuis Project Gutenberg. Les fichiers `.txt` sont generes automatiquement et ne sont pas versionnes.
 
-`data/cache/` servira a stocker les resultats couteux a recalculer.
+`data/cache/` contient les resultats sauvegardes pour eviter de recalculer les memes analyses. Les fichiers de cache ne sont pas versionnes.
 
-`diagrams/` contiendra les diagrammes de pipeline demandes dans le sujet.
+`diagrams/` contient les schemas PNG demandes pour expliquer les pipelines.
 
-## `utils/gutenberg.py`
+`docs/` contient la documentation detaillee des methodes.
 
-Ce fichier gere la recuperation des livres depuis Project Gutenberg.
+## Recuperer les livres
 
-Il permet de :
+Les livres sont telecharges automatiquement en local avec `utils/gutenberg.py`.
 
-- construire l'URL d'un livre a partir de son ID Gutenberg ;
-- telecharger le texte brut du livre ;
-- sauvegarder le fichier dans `data/books/` ;
-- relire un livre deja telecharge sans refaire une requete reseau ;
-- gerer les erreurs avec des messages clairs.
-
-Exemple avec le livre `11`, qui correspond a *Alice's Adventures in Wonderland* :
-
-```python
-from utils.gutenberg import download_book, load_book
-
-path = download_book(11)
-text = load_book(11)
-```
-
-Le livre est sauvegarde ici :
-
-```text
-data/books/11.txt
-```
-
-## `utils/text_processing.py`
-
-Ce fichier prepare le texte avant les analyses NLP. Il est central, car les modules comme `lexdiv`, `topics`, `similar` ou `summarize` doivent travailler sur un texte propre.
-
-Il permet de :
-
-- enlever l'en-tete et le footer Project Gutenberg ;
-- normaliser le texte ;
-- nettoyer les caracteres inutiles ;
-- tokeniser le texte en mots ;
-- retirer les mots vides si necessaire ;
-- decouper le texte en phrases ;
-- decouper le livre en sections pour les topics.
-
-### Nettoyage Gutenberg
-
-Les fichiers Project Gutenberg contiennent des metadonnees et une licence qui ne font pas partie du livre. Si on garde ces parties, les resultats NLP peuvent etre fausses.
-
-La fonction suivante garde uniquement le contenu reel du livre :
-
-```python
-strip_gutenberg_header_footer(text)
-```
-
-### Normalisation
-
-La normalisation rend le texte plus regulier. Elle harmonise les apostrophes, les tirets, les retours a la ligne et peut mettre le texte en minuscules.
-
-```python
-normalize_text(text)
-```
-
-### Tokenisation
-
-La tokenisation transforme un texte en liste de mots.
-
-```python
-tokenize(text)
-```
-
-Exemple :
-
-```text
-Alice's Adventures in Wonderland
-```
-
-devient :
-
-```python
-["alice", "adventures", "in", "wonderland"]
-```
-
-### Mots vides
-
-Les mots vides sont des mots tres frequents qui apportent peu d'information thematique, comme `the`, `a`, `of`, `in`, `and`.
-
-Ils peuvent etre retires avec :
-
-```python
-tokenize(text, remove_stop_words=True)
-```
-
-## Tests rapides
-
-Telecharger Alice depuis Project Gutenberg :
+Exemple pour telecharger Alice, ID Gutenberg `11` :
 
 ```bash
 python3 -c "from utils.gutenberg import download_book; print(download_book(11))"
 ```
 
-Afficher les premiers tokens :
+Le fichier est cree ici :
 
-```bash
-python3 -c "from utils.gutenberg import load_book; from utils.text_processing import tokenize; text = load_book(11); print(tokenize(text)[:30])"
+```text
+data/books/11.txt
 ```
 
-Afficher les premiers tokens sans mots vides :
+Les livres complets restent en local et ne sont pas pushes sur GitHub pour garder un depot propre.
 
-```bash
-python3 -c "from utils.gutenberg import load_book; from utils.text_processing import tokenize; text = load_book(11); print(tokenize(text, remove_stop_words=True)[:30])"
-```
-
-Afficher le nombre de sections detectees :
-
-```bash
-python3 -c "from utils.gutenberg import load_book; from utils.text_processing import split_into_sections; text = load_book(11); print(len(split_into_sections(text)))"
-```
-
-## Commandes CLI prevues
-
-Le script `bookworm.py` devra respecter la nomenclature du sujet :
+## Commandes CLI
 
 ```bash
 python3 bookworm.py --lexdiv 11
@@ -169,6 +93,144 @@ python3 bookworm.py --summarize 11
 python3 bookworm.py --similar 11
 python3 bookworm.py --card 11
 ```
+
+L'ID `11` correspond a *Alice's Adventures in Wonderland*.
+
+## Exemples d'utilisation
+
+Calculer la diversite lexicale :
+
+```bash
+python3 bookworm.py --lexdiv 11
+```
+
+Extraire les themes par section :
+
+```bash
+python3 bookworm.py --topics 11
+```
+
+Extraire les personnages et lieux :
+
+```bash
+python3 bookworm.py --entities 11
+```
+
+Generer un resume :
+
+```bash
+python3 bookworm.py --summarize 11
+```
+
+Trouver des livres similaires :
+
+```bash
+python3 bookworm.py --similar 11
+```
+
+Generer la fiche complete :
+
+```bash
+python3 bookworm.py --card 11
+```
+
+## Cache
+
+Les commandes couteuses sauvegardent leur resultat dans `data/cache`.
+
+Cela concerne notamment :
+
+- `--topics` ;
+- `--summarize` ;
+- `--similar` ;
+- `--card`.
+
+Avant de recalculer, le programme verifie si un resultat existe deja dans le cache.
+
+## Tests rapides
+
+Verifier que la CLI fonctionne :
+
+```bash
+python3 bookworm.py --lexdiv 11
+```
+
+Verifier la similarite :
+
+```bash
+python3 bookworm.py --similar 11
+```
+
+Verifier la gestion des collisions :
+
+```bash
+python3 bookworm.py --lexdiv 11 --topics 11
+```
+
+Cette derniere commande doit afficher une erreur, car le sujet demande qu'une seule option soit executee a la fois.
+
+## Documentation des methodes
+
+- [Preprocessing](docs/preprocessing.md)
+- [Lexical Diversity](docs/lexdiv.md)
+- [Topics](docs/topics.md)
+- [Entities](docs/entities.md)
+- [Summarize](docs/summarize.md)
+- [Similarity Methods](docs/similar.md)
+- [Book Card](docs/card.md)
+- [CLI](docs/cli.md)
+
+## Diagrammes
+
+- `diagrams/diagram_lexdiv.png`
+- `diagrams/diagram_topics.png`
+- `diagrams/diagram_entities.png`
+- `diagrams/diagram_summarize.png`
+- `diagrams/diagram_similar.png`
+- `diagrams/diagram_card.png`
+
+## Trophees couverts par le projet
+
+Fonctionnalites codees :
+
+- nettoyage
+- tokenisation
+- collision
+- lexdiv
+- sujets
+- entites
+- resume
+- similaire
+- fiche de livre
+- nomenclature
+- robustesse
+- maintenabilite
+- portabilite
+- clean_repo
+- Bases du versionnage
+
+Documentation et oral :
+
+- mots vides
+- normalisation
+- vectorisation
+- topics-doc
+- entities_doc
+- summarize_doc
+- similar_doc
+- doc_basic
+- justification_outils
+- presentation
+- argumentation
+
+## Choix techniques
+
+- Telechargement des livres : `requests` n'est pas necessaire, le projet utilise `urllib` via la bibliotheque standard Python.
+- Preprocessing : nettoyage Gutenberg, normalisation, tokenisation et mots vides.
+- Topics : dictionnaire de themes pour garder une methode transparente et explicable.
+- Resume : resume extractif par frequence de mots.
+- Similarite : Jaccard par defaut, avec comparaison possible avec frequence cosinus et TF-IDF cosinus.
+- Cache : fichiers JSON dans `data/cache` pour eviter les recalculs.
 
 ## Versioning
 
@@ -183,5 +245,5 @@ Exemples :
 ```text
 feat(gutenberg): add project gutenberg downloader
 feat(text-processing): add text cleaning and tokenization
-docs(readme): add project documentation
+docs(readme): update project documentation
 ```
