@@ -1,55 +1,71 @@
 # Similarity Methods
 
-The `similar` feature compares one Gutenberg book with the project book collection and returns the five closest titles.
+La commande `--similar` compare un livre avec la collection du projet et retourne les cinq livres les plus proches.
 
-The final command will be exposed through:
+Le code principal est dans `modules/similar.py`.
 
-```bash
-python3 bookworm.py --similar <ID>
-```
+## Objectif
 
-Internally, we tested several approaches before choosing the default one.
+Le but est de recommander des livres similaires a celui donne en parametre.
 
-## Jaccard Similarity
+Pour le livre `11`, qui correspond a *Alice's Adventures in Wonderland*, le programme compare Alice avec les autres livres de `data/book_collection.json`.
 
-Jaccard similarity compares the vocabulary shared by two books.
+## Methode finale choisie
 
-Each book is transformed into a set of unique words. The score is computed as:
+La methode utilisee par defaut est Jaccard.
+
+Nous avons quand meme teste trois methodes :
+
+- Jaccard ;
+- cosine similarity avec frequence de mots ;
+- cosine similarity avec TF-IDF.
+
+Cela permet de justifier le choix final au lieu de choisir une methode au hasard.
+
+## 1. Jaccard
+
+Jaccard compare les vocabulaires partages entre deux livres.
+
+Chaque livre est transforme en ensemble de mots uniques.
+
+La formule est :
 
 ```text
-number of shared words / number of total unique words across both books
+nombre de mots en commun / nombre total de mots uniques
 ```
 
-Example:
+Exemple :
 
 ```python
 book_a = {"alice", "rabbit", "queen", "garden"}
 book_b = {"alice", "rabbit", "cat", "tea"}
 ```
 
-Shared words:
+Mots en commun :
 
 ```python
 {"alice", "rabbit"}
 ```
 
-All unique words:
+Tous les mots uniques :
 
 ```python
 {"alice", "rabbit", "queen", "garden", "cat", "tea"}
 ```
 
-Score:
+Score :
 
 ```text
 2 / 6 = 0.33
 ```
 
-### Why It Is Useful
+### Pourquoi cette methode est utile
 
-Jaccard is simple, fast, and easy to explain. It worked well for `Alice's Adventures in Wonderland` because it returned books with a similar youth/fantasy vocabulary.
+Jaccard est simple, rapide et tres facile a expliquer.
 
-Result for book `11`:
+Elle a bien fonctionne pour Alice parce qu'elle retourne des livres proches en univers et en vocabulaire jeunesse/fantastique.
+
+Resultat obtenu pour le livre `11` :
 
 ```python
 [
@@ -61,43 +77,40 @@ Result for book `11`:
 ]
 ```
 
-### Limitations
+### Limite
 
-Jaccard only checks whether a word appears or not. It does not consider how many times the word appears.
+Jaccard regarde seulement si un mot existe ou non. Il ne regarde pas combien de fois le mot apparait.
 
-For example, a word appearing once and a word appearing one hundred times have the same weight.
+Un mot present une fois et un mot present cent fois ont donc le meme poids.
 
+## 2. Cosine similarity avec frequence de mots
 
-## Frequency Cosine Similarity
+Cette methode transforme chaque livre en vecteur de frequences.
 
-The frequency method represents each book as a word-count vector.
+Au lieu de garder seulement la presence des mots, elle compte combien de fois chaque mot apparait.
 
-Instead of only checking if a word exists, it counts how many times each word appears.
-
-Example:
+Exemple :
 
 ```python
 book_a = {"alice": 10, "rabbit": 6, "queen": 2}
 book_b = {"alice": 3, "rabbit": 1, "cat": 8}
 ```
 
-The books are compared with cosine similarity. Cosine similarity measures whether two vectors point in a similar direction.
+Ensuite, le programme compare les vecteurs avec une similarite cosinus.
 
-In this project, this means:
+La question devient :
 
 ```text
-Do the books use words with similar frequencies?
+Est-ce que les deux livres utilisent les memes mots avec des frequences proches ?
 ```
 
-### Why We Tested It
+### Pourquoi on l'a testee
 
-This method is more precise than Jaccard because it considers word repetition.
+Cette methode est plus fine que Jaccard car elle prend en compte les repetitions.
 
-If a word is central in a book, it appears many times and receives more importance.
+Si un mot est central dans un livre, il aura plus de poids.
 
-### Result On Alice
-
-For book `11`, this method returned:
+### Resultat sur Alice
 
 ```python
 [
@@ -109,36 +122,33 @@ For book `11`, this method returned:
 ]
 ```
 
-### Why We Did Not Choose It
+### Pourquoi on ne l'a pas choisie
 
-The result is less coherent for `Alice's Adventures in Wonderland` because it brings back books such as `Dracula` and `Sherlock Holmes`.
+Le resultat est moins coherent pour Alice : `Dracula` et `Sherlock Holmes` apparaissent tres haut alors que leur univers est moins proche.
 
-Those books may share narrative vocabulary with Alice, but they are not the closest books in terms of audience or literary universe.
+Cette methode peut etre influencee par des mots narratifs frequents, meme apres nettoyage.
 
-The frequency method can be dominated by repeated narrative words, even after preprocessing.
+## 3. TF-IDF + cosine similarity
 
+TF-IDF signifie `Term Frequency - Inverse Document Frequency`.
 
-## TF-IDF Cosine Similarity
+Cette methode donne un poids aux mots :
 
-TF-IDF means `Term Frequency - Inverse Document Frequency`.
+- un mot frequent dans un livre devient important pour ce livre ;
+- un mot present dans presque tous les livres perd de l'importance ;
+- un mot rare et specifique gagne de l'importance.
 
-This method gives a weight to each word:
+Ensuite, les livres sont compares avec une similarite cosinus.
 
-- words that appear often in one book are important for that book;
-- words that appear in almost every book become less important;
-- rare and specific words receive more weight.
+Cette methode correspond au trophee theorique `vectorisation`, car elle transforme un texte en vecteur numerique.
 
-After computing TF-IDF weights, each book becomes a weighted vector of words. The vectors are then compared with cosine similarity.
+### Pourquoi on l'a testee
 
-### Why We Tested It
+TF-IDF est une methode classique et serieuse pour comparer des textes.
 
-TF-IDF is a common and serious method for text similarity. It is usually stronger than raw word frequency because it reduces the importance of words that are frequent everywhere.
+Elle est souvent meilleure que la frequence simple car elle reduit le poids des mots trop communs.
 
-This is useful when comparing books, because many books share common narrative words.
-
-### Result On Alice
-
-For book `11`, this method returned:
+### Resultat sur Alice
 
 ```python
 [
@@ -150,12 +160,35 @@ For book `11`, this method returned:
 ]
 ```
 
-### Why We Did Not Choose It As Default
+### Pourquoi on ne l'a pas choisie par defaut
 
-TF-IDF is theoretically strong, but on our small and mixed corpus it did not produce the most coherent recommendations for Alice.
+TF-IDF est interessant en theorie, mais sur notre petit corpus melange, il ne donne pas la liste la plus naturelle pour Alice.
 
-After `Through the Looking-Glass`, it returned several books from different categories. These books may share specific vocabulary with Alice, but they are not the most natural recommendations for a youth/fantasy book.
+Il retrouve des ressemblances de vocabulaire, mais pas toujours des ressemblances d'univers litteraire.
 
-### Final Choice
+## Choix final
 
-We kept TF-IDF available for comparison, but chose Jaccard as the default method because it produced the most coherent top 5 recommendations for `Alice's Adventures in Wonderland` in this project corpus.
+Nous gardons les trois methodes dans le code pour pouvoir les comparer.
+
+Par defaut, nous utilisons Jaccard parce que c'est la methode qui donne les recommandations les plus coherentes pour Alice dans notre corpus.
+
+## Cache
+
+Le resultat est sauvegarde dans `data/cache` avec une cle du type :
+
+```text
+similar_11_jaccard_top5.json
+```
+
+## Commande CLI
+
+```bash
+python3 bookworm.py --similar 11
+```
+
+## Trophees valides
+
+- similaire
+- similar_doc
+- vectorisation
+- justification_outils
