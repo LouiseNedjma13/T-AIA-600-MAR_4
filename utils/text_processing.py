@@ -13,7 +13,7 @@ CHAPTER_PATTERN = re.compile(
     r"(?im)^\s*(chapter\s+[ivxlcdm0-9]+\.?.*|[ivxlcdm]+\.\s+.+)\s*$"
 )
 WORD_PATTERN = re.compile(r"[a-z]+(?:'[a-z]+)?")
-SENTENCE_PATTERN = re.compile(r"(?<=[.!?])\s+")
+SENTENCE_PATTERN = re.compile(r"(?<=[.!?][\"\'])\s+|(?<=[.!?])\s+")
 
 STOP_WORDS = {
     "a", "about", "above", "after", "again", "against", "all", "am",
