@@ -66,3 +66,53 @@ Result for book `11`:
 Jaccard only checks whether a word appears or not. It does not consider how many times the word appears.
 
 For example, a word appearing once and a word appearing one hundred times have the same weight.
+
+
+## Frequency Cosine Similarity
+
+The frequency method represents each book as a word-count vector.
+
+Instead of only checking if a word exists, it counts how many times each word appears.
+
+Example:
+
+```python
+book_a = {"alice": 10, "rabbit": 6, "queen": 2}
+book_b = {"alice": 3, "rabbit": 1, "cat": 8}
+```
+
+The books are compared with cosine similarity. Cosine similarity measures whether two vectors point in a similar direction.
+
+In this project, this means:
+
+```text
+Do the books use words with similar frequencies?
+```
+
+### Why We Tested It
+
+This method is more precise than Jaccard because it considers word repetition.
+
+If a word is central in a book, it appears many times and receives more importance.
+
+### Result On Alice
+
+For book `11`, this method returned:
+
+```python
+[
+    "Through the Looking-Glass",
+    "Dracula",
+    "The Adventures of Sherlock Holmes",
+    "The Memoirs of Sherlock Holmes",
+    "Treasure Island"
+]
+```
+
+### Why We Did Not Choose It
+
+The result is less coherent for `Alice's Adventures in Wonderland` because it brings back books such as `Dracula` and `Sherlock Holmes`.
+
+Those books may share narrative vocabulary with Alice, but they are not the closest books in terms of audience or literary universe.
+
+The frequency method can be dominated by repeated narrative words, even after preprocessing.
