@@ -19,7 +19,7 @@ def summarize_book(
     sentence_count: int = DEFAULT_SENTENCE_COUNT,
     use_cache: bool = True,
 ) -> str:
-    cache_key = f"summary_{book_id}_sentences{sentence_count}"
+    cache_key = f"summary_v2_{book_id}_sentences{sentence_count}"
 
     if use_cache:
         cached_summary = load_cache(cache_key)

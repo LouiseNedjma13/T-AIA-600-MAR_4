@@ -40,7 +40,7 @@ def extract_topics_for_book(
     max_sections: int = 4,
     use_cache: bool = True,
 ) -> dict[int, list[str]]:
-    cache_key = f"topics_{book_id}_top{top_n}_sections{max_sections}"
+    cache_key = f"topics_v2_{book_id}_top{top_n}_sections{max_sections}"
 
     if use_cache:
         cached_topics = load_cache(cache_key)
@@ -127,10 +127,21 @@ def _select_topic_sections(text: str, max_sections: int) -> dict[int, str]:
     if not real_sections:
         return split_into_sections(text, max_sections=max_sections)
 
-    return {
-        index + 1: section
-        for index, section in enumerate(real_sections[:max_sections])
-    }
+    return _merge_sections(real_sections, max_sections)
+
+
+def _merge_sections(sections: list[str], max_sections: int) -> dict[int, str]:
+    grouped_sections = {}
+    section_count = len(sections)
+
+    for index in range(max_sections):
+        start = round(index * section_count / max_sections)
+        end = round((index + 1) * section_count / max_sections)
+        section = "\n\n".join(sections[start:end]).strip()
+        if section:
+            grouped_sections[index + 1] = section
+
+    return grouped_sections
 
 
 def _restore_topic_keys(topics: dict[str, list[str]]) -> dict[int, list[str]]:

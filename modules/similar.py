@@ -4,7 +4,7 @@ from collections import Counter
 from pathlib import Path
 
 from utils.cache import load_cache, save_cache
-from utils.gutenberg import load_book
+from utils.gutenberg import GutenbergError, load_book
 from utils.text_processing import tokenize
 
 
@@ -27,7 +27,7 @@ def find_similar_books(
     method: str = DEFAULT_METHOD,
     use_cache: bool = True,
 ) -> list[str]:
-    cache_key = f"similar_{book_id}_{method}_top{top_n}"
+    cache_key = f"similar_v2_{book_id}_{method}_top{top_n}"
 
     if use_cache:
         cached_result = load_cache(cache_key)
@@ -36,6 +36,12 @@ def find_similar_books(
 
     scored_books = score_similar_books(book_id, method=method)
     titles = [book["title"] for book in scored_books[:top_n]]
+    if len(titles) < top_n:
+        for title in _metadata_fallback(book_id):
+            if title not in titles:
+                titles.append(title)
+            if len(titles) == top_n:
+                break
 
     if use_cache:
         save_cache(cache_key, titles)
@@ -80,7 +86,10 @@ def _load_documents(books: list[dict]) -> dict[str, list[str]]:
 
     for book in books:
         book_id = str(book["id"])
-        text = load_book(book_id)
+        try:
+            text = load_book(book_id)
+        except GutenbergError:
+            continue
         tokens = tokenize(text, remove_stop_words=True)
         documents[book_id] = [
             token
@@ -185,3 +194,24 @@ def _format_scores(scores: dict[str, float], books: list[dict], target_id: str) 
         for book_id in ranked_ids
         if book_id != target_id
     ]
+
+
+def _metadata_fallback(book_id: int | str) -> list[str]:
+    books = load_book_collection()
+    target_id = str(book_id)
+    target_book = next((book for book in books if str(book["id"]) == target_id), None)
+
+    if target_book is None:
+        return []
+
+    same_category = [
+        book["title"]
+        for book in books
+        if str(book["id"]) != target_id and book["category"] == target_book["category"]
+    ]
+    remaining = [
+        book["title"]
+        for book in books
+        if str(book["id"]) != target_id and book["title"] not in same_category
+    ]
+    return same_category + remaining
