@@ -29,43 +29,49 @@ BOOK_COLLECTION = {
     "345": {"title": "Dracula", "authors": "Bram Stoker", "bookshelves": "Science-Fiction & Fantasy"},
     "68283": {"title": "The call of Cthulhu", "authors": "H. P. Lovecraft", "bookshelves": "Science-Fiction & Fantasy"},
 }
-CATEGORY_BONUS = 0.12
+CATEGORY_BONUS = 0.04
+AUTHOR_BONUS = 0.03
 
 
-def find_similar_books(book_id: int | str, use_cache: bool = True) -> list[str]:
+def find_similar_books(book_id: int | str, use_cache: bool = True) -> list[dict[str, str | float]]:
     normalized_id = str(book_id).strip()
-    cached = load_cache("similar_v3", normalized_id) if use_cache else None
+    cached = load_cache("similar_v5", normalized_id) if use_cache else None
     if cached is not None:
         return cached
 
     vectors = _build_collection_vectors()
     if normalized_id not in vectors:
-        top_titles = _metadata_fallback(normalized_id)
-        return save_cache("similar_v3", normalized_id, top_titles) if use_cache else top_titles
+        fallback = _metadata_fallback(normalized_id)
+        return save_cache("similar_v5", normalized_id, fallback) if use_cache else fallback
 
     source_vector = vectors[normalized_id]
-    source_category = BOOK_COLLECTION[normalized_id]["bookshelves"]
+    source_metadata = BOOK_COLLECTION[normalized_id]
     similarities = []
     for other_id, vector in vectors.items():
         if other_id == normalized_id:
             continue
-        score = _cosine(source_vector, vector)
-        if BOOK_COLLECTION[other_id]["bookshelves"] == source_category:
+        text_score = _cosine(source_vector, vector)
+        score = text_score
+        other_metadata = BOOK_COLLECTION[other_id]
+        if other_metadata["bookshelves"] == source_metadata["bookshelves"]:
             score += CATEGORY_BONUS
-        similarities.append((score, other_id))
+        if other_metadata["authors"] == source_metadata["authors"]:
+            score += AUTHOR_BONUS
+        similarities.append((score, text_score, other_id))
 
-    top_titles = [
-        BOOK_COLLECTION[other_id]["title"]
-        for _, other_id in sorted(similarities, reverse=True)[:5]
+    recommendations = [
+        _recommendation_payload(normalized_id, other_id, score, text_score)
+        for score, text_score, other_id in sorted(similarities, reverse=True)[:5]
     ]
-    if len(top_titles) < 5:
-        for title in _metadata_fallback(normalized_id):
-            if title not in top_titles:
-                top_titles.append(title)
-            if len(top_titles) == 5:
+    if len(recommendations) < 5:
+        known_titles = {item["title"] for item in recommendations}
+        for item in _metadata_fallback(normalized_id):
+            if item["title"] not in known_titles:
+                recommendations.append(item)
+            if len(recommendations) == 5:
                 break
 
-    return save_cache("similar_v3", normalized_id, top_titles) if use_cache else top_titles
+    return save_cache("similar_v5", normalized_id, recommendations) if use_cache else recommendations
 
 
 def get_book_info(book_id: int | str) -> dict[str, str]:
@@ -115,19 +121,47 @@ def _cosine(left: Counter, right: Counter) -> float:
     return numerator / (left_norm * right_norm)
 
 
-def _metadata_fallback(book_id: str) -> list[str]:
+def _metadata_fallback(book_id: str) -> list[dict[str, str | float]]:
     source = BOOK_COLLECTION.get(book_id)
     if source is None:
         raise ValueError(f"book {book_id} is not available for similarity comparison")
 
     same_category = [
-        metadata["title"]
+        _fallback_payload(metadata["title"], CATEGORY_BONUS, "same editorial category")
         for other_id, metadata in BOOK_COLLECTION.items()
         if other_id != book_id and metadata["bookshelves"] == source["bookshelves"]
     ]
+    same_category_titles = {item["title"] for item in same_category}
     remaining = [
-        metadata["title"]
+        _fallback_payload(metadata["title"], 0.0, "available in the comparison collection")
         for other_id, metadata in BOOK_COLLECTION.items()
-        if other_id != book_id and metadata["title"] not in same_category
+        if other_id != book_id and metadata["title"] not in same_category_titles
     ]
     return (same_category + remaining)[:5]
+
+
+def _recommendation_payload(
+    source_id: str, other_id: str, score: float, text_score: float
+) -> dict[str, str | float]:
+    source = BOOK_COLLECTION[source_id]
+    other = BOOK_COLLECTION[other_id]
+    return {
+        "title": other["title"],
+        "score": round(score, 4),
+        "reason": _recommendation_reason(source, other, text_score),
+    }
+
+
+def _recommendation_reason(source: dict[str, str], other: dict[str, str], text_score: float) -> str:
+    reasons = []
+    if source["authors"] == other["authors"]:
+        reasons.append("same author")
+    if source["bookshelves"] == other["bookshelves"]:
+        reasons.append("same editorial category")
+    if text_score > 0:
+        reasons.append("similar TF-IDF vocabulary")
+    return ", ".join(reasons) if reasons else "closest available TF-IDF match"
+
+
+def _fallback_payload(title: str, score: float, reason: str) -> dict[str, str | float]:
+    return {"title": title, "score": round(score, 4), "reason": reason}

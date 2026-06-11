@@ -14,7 +14,7 @@ LOCATION_CONTEXT_PATTERN = re.compile(
     r"([A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+)*)"
 )
 TITLE_WORDS = {"Mr", "Mrs", "Miss", "Ms", "Dr", "Sir", "Lady", "Professor"}
-ENTITIES_CACHE_NAMESPACE = "entities_v2"
+ENTITIES_CACHE_NAMESPACE = "entities_v4"
 ENTITY_STOPLIST = {
     "A", "About", "After", "And", "Author", "Before", "Book", "Chapter",
     "Contents", "Copyright", "English", "Every", "First", "For", "Gutenberg",
@@ -37,6 +37,15 @@ KNOWN_LOCATIONS = {
     "Island", "London", "New York", "Paris", "Rome", "Scotland", "Sea",
     "Spain", "Wonderland",
 }
+GENERIC_PLACE_WORDS = {
+    "Africa", "America", "Asia", "Australia", "China", "England", "Europe",
+    "France", "India", "Ireland", "London", "Paris", "Rome", "Scotland",
+    "Spain",
+}
+MIN_LOCATION_MENTIONS = 2
+MIN_GENERIC_PLACE_MENTIONS = 10
+SPACY_MODEL = "en_core_web_sm"
+SPACY_NLP = None
 
 
 def extract_entities(book_id: int | str, use_cache: bool = True) -> dict[str, list[str]]:
@@ -50,6 +59,7 @@ def extract_entities(book_id: int | str, use_cache: bool = True) -> dict[str, li
 
     name_counter = Counter(candidates)
     location_counter = Counter(_extract_context_locations(text))
+    spacy_available = _add_spacy_entities(text, name_counter, location_counter)
     locations = _rank_locations(location_counter, name_counter)
     location_set = set(locations)
     characters = [
@@ -58,7 +68,11 @@ def extract_entities(book_id: int | str, use_cache: bool = True) -> dict[str, li
         if count >= 2 and name not in location_set and name not in KNOWN_LOCATIONS
     ][:20]
 
-    result = {"characters": characters, "locations": locations[:20]}
+    result = {
+        "characters": characters,
+        "locations": locations[:20],
+        "method": "spaCy + custom rules" if spacy_available else "custom rules fallback",
+    }
     return save_cache(ENTITIES_CACHE_NAMESPACE, book_id, result) if use_cache else result
 
 
@@ -96,12 +110,14 @@ def _rank_locations(location_counter: Counter, name_counter: Counter) -> list[st
     return [
         location
         for location, count in location_counter.most_common()
-        if count >= 1 and _is_location_candidate(location)
+        if count >= MIN_LOCATION_MENTIONS and _is_location_candidate(location, count)
     ]
 
 
-def _is_location_candidate(location: str) -> bool:
+def _is_location_candidate(location: str, count: int) -> bool:
     if not _is_entity_candidate(location):
+        return False
+    if location in GENERIC_PLACE_WORDS and count < MIN_GENERIC_PLACE_MENTIONS:
         return False
     if location in KNOWN_LOCATIONS:
         return True
@@ -109,3 +125,42 @@ def _is_location_candidate(location: str) -> bool:
         location.endswith(suffix)
         for suffix in (" Street", " Island", " Sea", " Castle", " House")
     )
+
+
+def _add_spacy_entities(
+    text: str, name_counter: Counter, location_counter: Counter
+) -> bool:
+    nlp = _load_spacy_model()
+    if nlp is None:
+        return False
+
+    for doc in nlp.pipe(_spacy_chunks(text), batch_size=8):
+        for entity in doc.ents:
+            cleaned = _clean_entity(entity.text)
+            if not _is_entity_candidate(cleaned):
+                continue
+            if entity.label_ == "PERSON":
+                name_counter[cleaned] += 2
+            elif entity.label_ in {"GPE", "LOC", "FAC"}:
+                location_counter[cleaned] += 2
+
+    return True
+
+
+def _load_spacy_model():
+    global SPACY_NLP
+    if SPACY_NLP is not None:
+        return SPACY_NLP
+
+    try:
+        import spacy
+
+        SPACY_NLP = spacy.load(SPACY_MODEL)
+    except (ImportError, OSError):
+        SPACY_NLP = None
+
+    return SPACY_NLP
+
+
+def _spacy_chunks(text: str, chunk_size: int = 90000) -> list[str]:
+    return [text[index:index + chunk_size] for index in range(0, len(text), chunk_size)]

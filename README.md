@@ -15,16 +15,26 @@ python3 bookworm.py --similar 11
 python3 bookworm.py --card 11
 ```
 
+## Installation
+
+The project uses `spaCy` for stronger named-entity recognition and keeps a
+custom-rule fallback if the model is not installed.
+
+```bash
+python3 -m pip install -r requirements.txt
+python3 -m spacy download en_core_web_sm
+```
+
 ## Architecture
 
 ```text
 bookworm.py
-nlp/
-  lexical_diversity.py
+modules/
+  lexdiv.py
   topics.py
   entities.py
-  summarization.py
-  similarity.py
+  summarize.py
+  similar.py
   card.py
 services/
   gutenberg.py
@@ -34,14 +44,13 @@ utils/
 data/
   books/
   cache/
-diagrams/
 requirements.txt
 ```
 
 `bookworm.py` is the CLI orchestrator. It reads the user command and calls the
 right NLP function.
 
-`nlp/` contains the text analysis features required by the subject.
+`modules/` contains the text analysis features required by the subject.
 
 `services/` contains reusable project services: Project Gutenberg access and
 cache management.
@@ -68,10 +77,11 @@ The program tokenizes the text and computes:
 
 ### Topics
 
-The book is split into four sections. For each section, the program removes
-stop words and computes TF-IDF scores. Important keywords are then mapped to
-broader theme families such as animals, authority, adventure, fantasy,
-mirror world or mystery.
+The book is split into four balanced sections. If chapter headings are found,
+chapters are grouped across the whole book instead of only using the beginning.
+For each section, the program removes stop words and computes TF-IDF scores.
+Important keywords are then mapped to broader theme families such as animals,
+authority, adventure, fantasy, mirror world or mystery.
 
 The returned list starts with the most present broad themes and is completed
 with representative keywords. This follows the idea that topics should describe
@@ -80,9 +90,14 @@ depends on the quality of the handcrafted theme vocabulary.
 
 ### Entities
 
-The prototype uses capitalization and context heuristics to find likely
-characters and locations. It is lightweight and easy to explain, but less
-accurate than a trained NER model.
+The prototype combines `spaCy` named-entity recognition with custom literary
+rules. `spaCy` detects people and places, then the project adds capitalization,
+context and repetition rules to clean the output for book texts. If the model
+is unavailable, the program falls back to the custom rules so the CLI still
+runs.
+
+Locations must appear repeatedly or match strong place patterns, which avoids
+overvaluing cities or countries that are only mentioned in passing.
 
 ### Summarization
 
@@ -90,19 +105,21 @@ The summary uses a lightweight hybrid method. First, the program extracts
 characters, locations and broad topics. These structured signals are used to
 build a short introductory sentence and to give a bonus to important sentences.
 Then the program applies extractive summarization: sentences are scored with
-word frequencies and returned in original order.
+word frequencies, entity and topic bonuses, then selected from different parts
+of the book and returned in original order.
 
 This follows the teacher's guidance: the summary is not only a list of frequent
 sentences, it is guided by information extracted from the text. The limitation
-is that the template sentence can be less natural for some books, so the method
-keeps extractive sentences as a robust fallback.
+is that extractive sentences can still sound less natural than a human-written
+summary, so the method keeps the rules simple and reproducible.
 
 ### Similarity
 
 The program vectorizes the required book collection with TF-IDF and compares
-books using cosine similarity. A small editorial category bonus is added so
-books from the same audience/genre group are ranked more naturally. It returns
-the five closest titles.
+books using cosine similarity. Small editorial category and author bonuses are
+added only as secondary signals so the textual TF-IDF comparison remains the
+main ranking factor. It returns the five closest recommendations with titles,
+scores and short reasons.
 
 ## Cache
 
@@ -111,9 +128,9 @@ Some operations can be expensive, so results are cached in `data/cache/`.
 For example:
 
 ```text
-data/cache/topics_11.json
-data/cache/summary_11.json
-data/cache/similar_11.json
+data/cache/topics_v4_11.json
+data/cache/summary_v4_11.json
+data/cache/similar_v5_11.json
 ```
 
 Use `--no-cache` to force recomputation:
@@ -124,10 +141,13 @@ python3 bookworm.py --topics 11 --no-cache
 
 ## Diagrams
 
-Pipeline diagrams are included below for quick review. The same diagrams are
-also available as separate files in `diagrams/`.
+The subject asks for a separate pipeline diagram for each NLP task. They are
+included directly in this Markdown documentation and exported as PNG files in
+`diagrams/`.
 
 ### Lexical Diversity Pipeline
+
+![Lexical diversity pipeline](diagrams/lexical_diversity.png)
 
 ```mermaid
 flowchart LR
@@ -141,6 +161,8 @@ flowchart LR
 ```
 
 ### Topics Pipeline
+
+![Topics pipeline](diagrams/topics.png)
 
 ```mermaid
 flowchart LR
@@ -159,20 +181,24 @@ flowchart LR
 
 ### Entities Pipeline
 
+![Entities pipeline](diagrams/entities.png)
+
 ```mermaid
 flowchart LR
     A[Book ID] --> B[Load Gutenberg text]
     B --> C[Keep capitalization]
-    C --> D[Find capitalized name candidates]
-    C --> E[Find location context patterns]
-    D --> F[Filter metadata and false positives]
-    E --> G[Rank likely locations]
-    F --> H[Rank repeated character names]
-    G --> I[Cache and return entities]
-    H --> I
+    C --> D[Run spaCy NER if available]
+    C --> E[Find capitalized and context candidates]
+    D --> F[Merge people and places]
+    E --> F
+    F --> G[Filter metadata and false positives]
+    G --> H[Rank repeated characters and locations]
+    H --> I[Cache and return entities]
 ```
 
 ### Summarization Pipeline
+
+![Summarization pipeline](diagrams/summarization.png)
 
 ```mermaid
 flowchart LR
@@ -185,7 +211,7 @@ flowchart LR
     D --> G
     F --> H[Score sentences with word frequencies]
     G --> I[Add entity and topic bonus]
-    H --> J[Select best sentences]
+    H --> J[Select best sentences across sections]
     I --> J
     J --> K[Add structured intro]
     K --> L[Cache summary string]
@@ -193,18 +219,22 @@ flowchart LR
 
 ### Similarity Pipeline
 
+![Similarity pipeline](diagrams/similarity.png)
+
 ```mermaid
 flowchart LR
     A[Target book ID] --> B[Load required collection]
     B --> C[Tokenize without stop words]
     C --> D[Build TF-IDF vectors]
     D --> E[Compute cosine similarity]
-    E --> F[Add editorial category bonus]
+    E --> F[Add small category and author bonuses]
     F --> G[Sort by decreasing score]
-    G --> H[Return top 5 titles]
+    G --> H[Return top 5 titles, scores and reasons]
 ```
 
 ### Book Card Pipeline
+
+![Book card pipeline](diagrams/card.png)
 
 ```mermaid
 flowchart LR
@@ -227,3 +257,10 @@ flowchart LR
 
 The project avoids large transformers, LLMs and APIs. The goal is not perfect
 NLP quality, but a clear, reproducible and defensible methodology.
+
+Main limitations to mention during the presentation:
+
+- Entity extraction is strongest when the `en_core_web_sm` model is installed.
+- Topic labels depend on a handcrafted theme vocabulary.
+- Summaries are extractive, so they reuse sentences from the source text.
+- Similarity is computed on a fixed comparison collection.

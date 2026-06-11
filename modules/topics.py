@@ -8,11 +8,16 @@ from utils.text_processing import split_into_sections, tokenize
 
 
 MIN_TOPIC_WORD_LENGTH = 3
-TOPICS_CACHE_NAMESPACE = "topics_v3"
+TOPICS_CACHE_NAMESPACE = "topics_v4"
 ROMAN_NUMERAL_PATTERN = re.compile(r"^[ivxlcdm]+$")
 EXCLUDED_TOPIC_WORDS = {
     "chapter", "chapters", "book", "volume", "contents", "illustration",
     "illustrations", "said", "say", "says", "little",
+    "alice", "thing", "things", "time", "long", "quite", "rather", "looked",
+    "went", "came", "come", "got", "get", "made", "make", "thought", "think",
+    "sends", "sent", "bill", "one", "two", "three", "way",
+    "like", "know", "see", "i'm", "i'll", "i've", "would", "could", "should",
+    "much", "well", "began", "must", "don't",
 }
 THEME_KEYWORDS = {
     "animals": {

@@ -1,7 +1,7 @@
 from collections import Counter
 
-from nlp.entities import extract_entities
-from nlp.topics import extract_topics
+from modules.entities import extract_entities
+from modules.topics import extract_topics
 from services.cache import load_cache, save_cache
 from services.gutenberg import load_book
 from utils.text_processing import split_into_sentences, tokenize
@@ -10,7 +10,7 @@ from utils.text_processing import split_into_sentences, tokenize
 def summarize_book(
     book_id: int | str, sentence_count: int = 4, use_cache: bool = True
 ) -> str:
-    cached = load_cache("summary_v3", book_id) if use_cache else None
+    cached = load_cache("summary_v4", book_id) if use_cache else None
     if cached is not None:
         return cached
 
@@ -25,7 +25,7 @@ def summarize_book(
     frequencies = Counter(tokenize(" ".join(sentences), remove_stop_words=True))
     if not frequencies:
         summary = " ".join(sentences[:sentence_count])
-        return save_cache("summary_v3", book_id, summary) if use_cache else summary
+        return save_cache("summary_v4", book_id, summary) if use_cache else summary
 
     max_frequency = max(frequencies.values())
     normalized = {word: count / max_frequency for word, count in frequencies.items()}
@@ -40,13 +40,13 @@ def summarize_book(
         score += _position_bonus(index, len(sentences))
         scored_sentences.append((score, index, sentence))
 
-    selected = sorted(scored_sentences, reverse=True)[:sentence_count]
+    selected = _select_diverse_sentences(scored_sentences, sentence_count, len(sentences))
     extractive_summary = " ".join(
         sentence for _, _, sentence in sorted(selected, key=lambda item: item[1])
     )
     structured_intro = _structured_intro(entities, topics)
     summary = " ".join(part for part in [structured_intro, extractive_summary] if part)
-    return save_cache("summary_v3", book_id, summary) if use_cache else summary
+    return save_cache("summary_v4", book_id, summary) if use_cache else summary
 
 
 def _important_terms(
@@ -72,18 +72,21 @@ def _structured_intro(entities: dict[str, list[str]], topics: dict[int, list[str
     locations = entities.get("locations", [])[:2]
     topic_words = _top_topic_words(topics, limit=5)
 
-    parts = []
+    details = []
     if characters:
-        parts.append(f"The book highlights characters such as {_join_words(characters)}")
+        details.append(f"follows {_join_words(characters)}")
     if locations:
-        parts.append(f"with important places such as {_join_words(locations)}")
+        details.append(f"takes place around {_join_words(locations)}")
     if topic_words:
-        parts.append(f"and recurring themes around {_join_words(topic_words)}")
+        details.append(f"develops themes of {_join_words(topic_words)}")
 
-    if not parts:
+    if not details:
         return ""
 
-    return " ".join(parts) + "."
+    if len(details) == 1:
+        return "The book " + details[0] + "."
+
+    return "The book " + ", ".join(details[:-1]) + ", and " + details[-1] + "."
 
 
 def _top_topic_words(topics: dict[int, list[str]], limit: int) -> list[str]:
@@ -127,11 +130,15 @@ def _candidate_sentences(sentences: list[str]) -> list[str]:
             continue
         if normalized_sentence.lstrip().startswith(('"', "'")):
             continue
+        if '"' in normalized_sentence:
+            continue
         if " said " in lower_sentence or lower_sentence.startswith("said "):
             continue
         if " growled " in lower_sentence or " cried " in lower_sentence:
             continue
         if normalized_sentence.count('"') > 2:
+            continue
+        if normalized_sentence.count(",") > 3:
             continue
         candidates.append(normalized_sentence)
     return candidates
@@ -145,3 +152,33 @@ def _position_bonus(index: int, total: int) -> float:
     if index > total * 0.92:
         return 0.05
     return 0.0
+
+
+def _select_diverse_sentences(
+    scored_sentences: list[tuple[float, int, str]], sentence_count: int, total: int
+) -> list[tuple[float, int, str]]:
+    selected = []
+    used_indexes = set()
+
+    for segment in range(sentence_count):
+        start = segment * total / sentence_count
+        end = (segment + 1) * total / sentence_count
+        segment_candidates = [
+            item
+            for item in scored_sentences
+            if start <= item[1] < end and item[1] not in used_indexes
+        ]
+        if segment_candidates:
+            best = max(segment_candidates, key=lambda item: item[0])
+            selected.append(best)
+            used_indexes.add(best[1])
+
+    if len(selected) < sentence_count:
+        for item in sorted(scored_sentences, reverse=True):
+            if item[1] not in used_indexes:
+                selected.append(item)
+                used_indexes.add(item[1])
+            if len(selected) == sentence_count:
+                break
+
+    return selected

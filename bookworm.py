@@ -2,12 +2,12 @@
 import argparse
 from pprint import pprint
 
-from nlp.card import build_book_card
-from nlp.entities import extract_entities
-from nlp.lexical_diversity import compute_lexical_diversity
-from nlp.similarity import find_similar_books
-from nlp.summarization import summarize_book
-from nlp.topics import extract_topics
+from modules.card import build_book_card
+from modules.entities import extract_entities
+from modules.lexdiv import compute_lexical_diversity
+from modules.similar import find_similar_books
+from modules.summarize import summarize_book
+from modules.topics import extract_topics
 from services.gutenberg import GutenbergError
 
 

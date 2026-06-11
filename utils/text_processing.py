@@ -101,7 +101,7 @@ def split_into_sentences(text: str) -> list[str]:
 
 
 def split_into_sections(text: str, max_sections: int = 4) -> dict[int, str]:
-    """Split a book into chapter-like sections, falling back to equal chunks."""
+    """Split a book into balanced chapter-like sections, falling back to chunks."""
     normalized_text = normalize_text(text, lowercase=False)
     matches = list(CHAPTER_PATTERN.finditer(normalized_text))
 
@@ -116,7 +116,7 @@ def split_into_sections(text: str, max_sections: int = 4) -> dict[int, str]:
             section = normalized_text[start:end].strip()
             if section:
                 sections.append(section)
-        return _limit_sections(sections, max_sections)
+        return _merge_into_balanced_sections(sections, max_sections)
 
     return _split_equal_chunks(normalized_text, max_sections)
 
@@ -130,9 +130,18 @@ def _normalize_token(token: str) -> str:
     return token
 
 
-def _limit_sections(sections: list[str], max_sections: int) -> dict[int, str]:
-    selected_sections = sections[:max_sections]
-    return {index + 1: section for index, section in enumerate(selected_sections)}
+def _merge_into_balanced_sections(sections: list[str], max_sections: int) -> dict[int, str]:
+    grouped = {}
+    section_count = len(sections)
+
+    for index in range(max_sections):
+        start = round(index * section_count / max_sections)
+        end = round((index + 1) * section_count / max_sections)
+        chunk = "\n\n".join(sections[start:end]).strip()
+        if chunk:
+            grouped[index + 1] = chunk
+
+    return grouped
 
 
 def _split_equal_chunks(text: str, max_sections: int) -> dict[int, str]:
