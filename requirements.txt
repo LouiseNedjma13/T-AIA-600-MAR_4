@@ -1,0 +1,4 @@
+# No external dependency required.
+#
+# The project uses only the Python standard library so it can run on any
+# machine with Python 3.10 or newer.
