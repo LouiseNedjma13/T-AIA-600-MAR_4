@@ -62,6 +62,20 @@ splitting.
 `data/books/` stores downloaded `.txt` books. `data/cache/` stores cached
 results. Generated data files are ignored by Git.
 
+## Methodology Choices
+
+The project favors lightweight and explainable NLP methods over heavy models.
+This keeps the CLI fast enough for a live demo and makes each result easier to
+justify during the presentation.
+
+| Task | Chosen approach | Alternatives considered | Trade-off |
+| --- | --- | --- | --- |
+| Lexical diversity | Direct token statistics | More advanced indices such as MTLD or Yule's K | Simple and reproducible, but less rich than bonus metrics |
+| Topics | TF-IDF per section + literary theme dictionary | LDA or LSA topic modeling | Explainable and fast, but depends on handcrafted vocabulary |
+| Entities | spaCy NER + custom literary filters | Regex-only NER | Better recognition than regex, still lightweight, but requires a small model |
+| Summary | Structured intro + extractive sentence scoring | TextRank, clustering, abstractive generation | No heavy model and easy to explain, but less natural than human summaries |
+| Similarity | TF-IDF cosine similarity + small metadata bonuses | Pure cosine similarity, clustering | Better recommendations for the fixed collection, but still collection-dependent |
+
 ## Methods
 
 ### Lexical diversity
@@ -118,8 +132,8 @@ summary, so the method keeps the rules simple and reproducible.
 The program vectorizes the required book collection with TF-IDF and compares
 books using cosine similarity. Small editorial category and author bonuses are
 added only as secondary signals so the textual TF-IDF comparison remains the
-main ranking factor. It returns the five closest recommendations with titles,
-scores and short reasons.
+main ranking factor. It returns the five closest titles, sorted by decreasing
+similarity.
 
 ## Cache
 
@@ -130,7 +144,7 @@ For example:
 ```text
 data/cache/topics_v4_11.json
 data/cache/summary_v4_11.json
-data/cache/similar_v5_11.json
+data/cache/similar_v6_11.json
 ```
 
 Use `--no-cache` to force recomputation:
@@ -229,7 +243,7 @@ flowchart LR
     D --> E[Compute cosine similarity]
     E --> F[Add small category and author bonuses]
     F --> G[Sort by decreasing score]
-    G --> H[Return top 5 titles, scores and reasons]
+    G --> H[Return top 5 titles]
 ```
 
 ### Book Card Pipeline

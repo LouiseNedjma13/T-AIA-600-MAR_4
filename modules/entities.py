@@ -14,7 +14,7 @@ LOCATION_CONTEXT_PATTERN = re.compile(
     r"([A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+)*)"
 )
 TITLE_WORDS = {"Mr", "Mrs", "Miss", "Ms", "Dr", "Sir", "Lady", "Professor"}
-ENTITIES_CACHE_NAMESPACE = "entities_v4"
+ENTITIES_CACHE_NAMESPACE = "entities_v5"
 ENTITY_STOPLIST = {
     "A", "About", "After", "And", "Author", "Before", "Book", "Chapter",
     "Contents", "Copyright", "English", "Every", "First", "For", "Gutenberg",
@@ -59,7 +59,7 @@ def extract_entities(book_id: int | str, use_cache: bool = True) -> dict[str, li
 
     name_counter = Counter(candidates)
     location_counter = Counter(_extract_context_locations(text))
-    spacy_available = _add_spacy_entities(text, name_counter, location_counter)
+    _add_spacy_entities(text, name_counter, location_counter)
     locations = _rank_locations(location_counter, name_counter)
     location_set = set(locations)
     characters = [
@@ -68,11 +68,7 @@ def extract_entities(book_id: int | str, use_cache: bool = True) -> dict[str, li
         if count >= 2 and name not in location_set and name not in KNOWN_LOCATIONS
     ][:20]
 
-    result = {
-        "characters": characters,
-        "locations": locations[:20],
-        "method": "spaCy + custom rules" if spacy_available else "custom rules fallback",
-    }
+    result = {"characters": characters, "locations": locations[:20]}
     return save_cache(ENTITIES_CACHE_NAMESPACE, book_id, result) if use_cache else result
 
 

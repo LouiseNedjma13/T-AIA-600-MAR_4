@@ -30,3 +30,5 @@ def compute_lexical_diversity(book_id: int | str, use_cache: bool = True) -> dic
         "mwf": round(token_count / type_count, 4) if type_count else 0.0,
     }
     return save_cache("lexdiv", book_id, result) if use_cache else result
+
+
