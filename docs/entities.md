@@ -4,6 +4,10 @@ La commande `--entities` extrait les personnages et les lieux d'un livre.
 
 Le code principal est dans `modules/entities.py`.
 
+## Diagramme
+
+![Pipeline entites](../diagrams/diagram_entities.png)
+
 ## Objectif
 
 Le but est de retourner un dictionnaire avec deux listes :

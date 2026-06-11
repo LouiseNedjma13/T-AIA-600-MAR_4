@@ -4,6 +4,10 @@ La commande `--topics` extrait les mots principaux de plusieurs sections du livr
 
 Le code principal est dans `modules/topics.py`.
 
+## Diagramme
+
+![Pipeline topics](../diagrams/diagram_topics.png)
+
 ## Objectif
 
 Le but est d'obtenir les sujets principaux de chaque partie du livre. Pour Alice, cela permet par exemple de voir revenir des mots comme `rabbit`, `door`, `queen`, `garden` ou `tea` selon les chapitres.

@@ -4,6 +4,10 @@ La commande `--card` genere une fiche complete pour un livre.
 
 Le code principal est dans `modules/card.py`.
 
+## Diagramme
+
+![Pipeline book card](../diagrams/diagram_card.png)
+
 ## Objectif
 
 La fiche de livre regroupe les resultats des autres commandes dans un seul dictionnaire.

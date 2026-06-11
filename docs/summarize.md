@@ -4,6 +4,10 @@ La commande `--summarize` resume un livre en quelques phrases.
 
 Le code principal est dans `modules/summarize.py`.
 
+## Diagramme
+
+![Pipeline resume](../diagrams/diagram_summarize.png)
+
 ## Objectif
 
 Le but est de produire un resume extractif. Cela veut dire que le programme ne cree pas de nouvelles phrases : il selectionne des phrases existantes du livre.

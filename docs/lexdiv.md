@@ -4,6 +4,10 @@ La commande `--lexdiv` calcule la diversite lexicale d'un livre.
 
 Le code principal est dans `modules/lexdiv.py`.
 
+## Diagramme
+
+![Pipeline diversite lexicale](../diagrams/diagram_lexdiv.png)
+
 ## Objectif
 
 La diversite lexicale sert a mesurer si un texte utilise beaucoup de mots differents ou s'il repete souvent les memes mots.

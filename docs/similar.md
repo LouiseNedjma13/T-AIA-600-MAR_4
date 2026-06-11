@@ -4,6 +4,10 @@ La commande `--similar` compare un livre avec la collection du projet et retourn
 
 Le code principal est dans `modules/similar.py`.
 
+## Diagramme
+
+![Pipeline similarite](../diagrams/diagram_similar.png)
+
 ## Objectif
 
 Le but est de recommander des livres similaires a celui donne en parametre.
