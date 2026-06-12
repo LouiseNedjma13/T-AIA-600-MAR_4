@@ -12,7 +12,7 @@ UNKNOWN_VALUE = "unknown"
 
 def build_book_card(book_id: int | str, use_cache: bool = True) -> dict:
     normalized_id = str(book_id)
-    cache_key = f"card_v3_{normalized_id}"
+    cache_key = f"card_v5_{normalized_id}"
 
     if use_cache:
         cached_card = load_cache(cache_key)

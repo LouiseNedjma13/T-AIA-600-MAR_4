@@ -1,4 +1,6 @@
-# utilisation de tokenize(text) pour le nettoyage et la tokenisation du texte, puis calcul de différentes mesures de diversité lexicale
+# utilisation de tokenize(text) pour le nettoyage et la tokenisation du texte, 
+#puis calcul de différentes mesures de diversité lexicale
+# calcule le voc du livre, nb de mot, mot differents, utilisé une fois, richess lexicale, longueur moyenne des mots, fréquence moyenne des mots
 
 {
     "tok": int,

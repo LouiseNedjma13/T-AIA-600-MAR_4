@@ -1,3 +1,5 @@
+# récupere personnage et lieux 
+
 import json
 import re
 from collections import Counter
@@ -12,8 +14,6 @@ DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 TOPIC_KEYWORDS_PATH = DATA_DIR / "topic_keywords.json"
 
 
-# Lightweight keyword-based topic extraction. This replaces heavier topic models
-# like LDA/LSA with transparent theme vocabularies that are easy to explain.
 MIN_WORD_LENGTH = 3
 MIN_SECTION_TOKENS = 100
 CHAPTER_PATTERN = re.compile(

@@ -14,22 +14,23 @@ Le but est de produire un resume extractif. Cela veut dire que le programme ne c
 
 ## Methode choisie
 
-Nous utilisons une methode par frequence de mots.
+Nous utilisons une methode extractive par sections et frequence de mots.
 
-L'idee est simple : si une phrase contient beaucoup de mots importants du livre, elle a plus de chances d'etre utile pour le resume.
+L'idee est simple : le livre est d'abord separe en grandes sections, puis le programme choisit des phrases importantes dans chaque partie. Cela donne un resume plus representatif du livre entier qu'une selection globale de quelques phrases.
 
 ## Etapes
 
-1. Le livre est decoupe en phrases avec `split_into_sentences`.
-2. Les phrases trop courtes ou trop longues sont ignorees.
-3. Les dialogues sont filtres pour eviter un resume compose seulement de repliques.
-4. Chaque phrase est tokenisee.
-5. Les mots vides sont retires.
-6. Le programme calcule les mots les plus frequents.
-7. Chaque phrase recoit un score.
-8. Les meilleures phrases sont selectionnees.
-9. Les phrases choisies sont remises dans leur ordre original.
-10. Le resultat est sauvegarde dans `data/cache`.
+1. Le livre est nettoye pour retirer l'en-tete et le footer Gutenberg.
+2. La table des matieres est ignoree pour ne garder que les vrais chapitres.
+3. Les chapitres sont regroupes en grandes sections.
+4. Chaque section est decoupee en phrases avec `split_into_sentences`.
+5. Les phrases trop courtes, trop longues, trop repetees ou trop dialoguees sont filtrees.
+6. Chaque phrase est tokenisee et les mots vides sont retires.
+7. Le programme calcule les mots les plus frequents dans chaque section.
+8. Les phrases recoivent un score selon les mots importants qu'elles contiennent.
+9. Les meilleures phrases de chaque section sont selectionnees.
+10. Les phrases choisies sont remises dans l'ordre original.
+11. Le resultat est sauvegarde dans `data/cache`.
 
 ## Pourquoi remettre les phrases dans l'ordre
 
@@ -46,7 +47,7 @@ Elle est moins intelligente qu'un modele generatif, mais elle respecte bien le c
 Le resultat est sauvegarde avec une cle du type :
 
 ```text
-summary_11_sentences5.json
+summary_v8_11_sentences8.json
 ```
 
 ## Commande CLI
